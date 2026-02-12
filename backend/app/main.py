@@ -1,11 +1,24 @@
+# main.py
+import os
+from dotenv import load_dotenv
+
+# 1. LOAD ENVIRONMENT VARIABLES FIRST
+# This must happen before importing anything that needs the DB
+load_dotenv()
+
+# Optional: Debug print to check if it's loading (delete this line in production)
+print(f"DEBUG: DATABASE_URL is set to: {os.getenv('DATABASE_URL')}")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import router as api_router
+
+# 2. Import local modules AFTER loading dotenv
 from .db import engine, Base
+from .api import router as api_router
+
 app = FastAPI(title="FactGuard API")
 
 # --- CORS MIDDLEWARE ---
-# This allows your React frontend to talk to your backend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -13,14 +26,14 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods (POST, GET, etc.)
-    allow_headers=["*"],  # Allows all headers (Content-Type, Authorization, etc.)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Include the API routes we've been testing
+# --- ROUTER REGISTRATION ---
 app.include_router(api_router, prefix="/api")
 
-# Root endpoint to check if the server is alive
+# --- ROOT ENDPOINT ---
 @app.get("/")
 def read_root():
     return {"message": "FactGuard API is running"}
@@ -28,6 +41,10 @@ def read_root():
 # --- DATABASE STARTUP ---
 @app.on_event('startup')
 def startup():
-    # This creates the tables in PostgreSQL automatically
-    Base.metadata.create_all(bind=engine)
-    print("Database tables created and server started!")
+    print("Connecting to database...")
+    try:
+        # This creates tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+        print("Database connection successful. Tables created.")
+    except Exception as e:
+        print(f"Error connecting to database: {e}")

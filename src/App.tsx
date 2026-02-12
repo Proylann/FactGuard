@@ -5,27 +5,44 @@ import Main from './frontend/Main';
 import './App.css';
 
 function App() {
-  // Initialize state from localStorage, defaulting to auth
+  // Initialize state from localStorage: if session exists, open dashboard
   const [authState, setAuthState] = useState<'auth' | 'landing' | 'dashboard'>(() => {
-    // Always start fresh with auth page
-    return 'auth';
+    try {
+      const s = localStorage.getItem('fg_session');
+      if (s) return 'dashboard';
+      const saved = localStorage.getItem('authState') as 'auth' | 'landing' | 'dashboard' | null;
+      return saved || 'auth';
+    } catch (e) {
+      return 'auth';
+    }
   });
 
-  // Save authState to localStorage whenever it changes
+  // Save authState to localStorage whenever it changes (non-sensitive)
   useEffect(() => {
-    localStorage.setItem('authState', authState);
+    try { localStorage.setItem('authState', authState); } catch (e) { /* ignore */ }
   }, [authState]);
+
+  const handleAuthSuccess = (session?: any) => {
+    try {
+      if (session) localStorage.setItem('fg_session', JSON.stringify(session));
+      else localStorage.setItem('fg_session', JSON.stringify({ authenticated: true }));
+    } catch (e) { /* ignore */ }
+    setAuthState('dashboard');
+  };
+
+  const handleLogout = () => {
+    try { localStorage.removeItem('fg_session'); } catch (e) { /* ignore */ }
+    setAuthState('landing');
+  };
 
   return (
     <>
       {authState === 'landing' ? (
-        // Landing -> navigates to Auth when user clicks Enter
         <LandingPage onEnter={() => setAuthState('auth')} />
       ) : authState === 'auth' ? (
-        // After successful auth, go to dashboard (Main)
-        <Auth onAuthSuccess={() => setAuthState('dashboard')} onBack={() => setAuthState('landing')} />
+        <Auth onAuthSuccess={handleAuthSuccess} onBack={() => setAuthState('landing')} />
       ) : (
-        <Main onLogout={() => setAuthState('landing')} />
+        <Main onLogout={handleLogout} />
       )}
     </>
   );
