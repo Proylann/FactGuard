@@ -9,7 +9,16 @@ Before you start, make sure you have the following installed:
 - **Git** - [Download](https://git-scm.com/download/win)
 - **Python 3.11+** - [Download](https://www.python.org/downloads/)
 - **Node.js 16+** - [Download](https://nodejs.org/)
-- **PostgreSQL** (optional, for local database) - [Download](https://www.postgresql.org/download/)
+- **PostgreSQL** - [Download](https://www.postgresql.org/download/) ⚠️ **REQUIRED**
+
+### Why PostgreSQL is Required
+
+✅ All team members connect to the **same database**  
+✅ Accounts and data are **shared** across the team  
+✅ No duplication of data  
+✅ Real-time collaboration  
+
+❌ Without PostgreSQL, each person would have isolated local data (SQLite)
 
 ### Verify Installations
 
@@ -70,7 +79,9 @@ cp .env.example .env
 
 ```env
 # PostgreSQL database connection
-DATABASE_URL=postgresql://postgres:password@localhost:5432/factguard_db
+# 🔑 This MUST point to your SHARED team database!
+# Ask your team lead for the correct credentials
+DATABASE_URL=postgresql://postgres:password@YOUR_DATABASE_SERVER:5432/factguard_db
 
 # Frontend URL (for CORS and email links)
 FRONTEND_URL=http://localhost:5173
@@ -81,6 +92,8 @@ SERPER_API_KEY=your_api_key_here
 # JWT Secret (use a strong random string)
 SECRET_KEY=your-very-secret-key-here-change-in-production
 ```
+
+⚠️ **Important:** The `DATABASE_URL` must be provided by your team lead. All team members should use the **SAME** database connection string to access the shared database.
 
 ### 2.4 Download ML Models
 
@@ -212,7 +225,72 @@ FactGuard/
 
 ---
 
-## 🆘 Troubleshooting
+## 🗄️ Understanding the Shared Database
+
+### How It Works
+
+```
+All Team Members
+    ↓
+    ├─→ Member 1 ─────┐
+    ├─→ Member 2 ─────┼──→ PostgreSQL Server (SHARED)
+    ├─→ Member 3 ─────┤     └─ factguard_db
+    └─→ Member 4 ─────┘
+
+✅ Everyone sees the SAME data
+✅ Accounts created by one person visible to all
+✅ Real-time data synchronization
+```
+
+### Setting Up Database Access
+
+**Team Lead (You):**
+1. Create PostgreSQL database on your server
+2. Create database user with credentials
+3. Share connection string with team: `postgresql://user:password@SERVER_IP:5432/factguard_db`
+
+**Team Members:**
+1. Receive the connection string from you
+2. Paste it in their `.env` file under `DATABASE_URL`
+3. They automatically connect to YOUR database
+
+### Example Connection Strings
+
+**Local Testing (same machine):**
+```
+DATABASE_URL=postgresql://postgres:mypassword@localhost:5432/factguard_db
+```
+
+**Shared Team Database (over network):**
+```
+DATABASE_URL=postgresql://factguard_user:secure_password@192.168.1.100:5432/factguard_db
+```
+
+**Cloud Database (AWS RDS, etc):**
+```
+DATABASE_URL=postgresql://admin:password@factguard-db.c1234567890.us-east-1.rds.amazonaws.com:5432/factguard_db
+```
+
+---
+
+## 📤 Sharing Connection String with Team
+
+**Create a file: `DATABASE_CREDENTIALS.txt` (secure sharing)**
+
+```
+TEAM: Here's your database connection info
+DATABASE_URL=postgresql://factguard_user:secure_password@YOUR_SERVER_IP:5432/factguard_db
+
+⚠️ IMPORTANT:
+- Keep this connection string SECRET
+- Don't commit it to GitHub
+- Change the password if shared publicly
+- Use environment variables in production
+```
+
+Share this securely (Slack, Email, etc) - NOT in GitHub!
+
+---
 
 ### **Backend won't start**
 
@@ -247,13 +325,29 @@ If it still fails, check your internet connection and try again.
 ✅ Solution:
 - Make sure PostgreSQL is running
 - Check DATABASE_URL in `.env` is correct
-- If using local PostgreSQL, verify credentials
+- Verify the connection string from your team lead
+- Ensure you can ping the database server: `ping YOUR_SERVER_IP`
+- If using cloud database, allow your IP in security groups
 
+**Test the connection:**
 ```bash
-# To use SQLite instead (for testing):
-# In backend/.env, set:
-# DATABASE_URL=sqlite:///./test.db
+# On Windows (requires PostgreSQL client tools)
+psql -h YOUR_SERVER -U username -d factguard_db
+
+# Type your password when prompted
 ```
+
+---
+
+### **Seeing different data than teammates**
+
+❌ Problem: Other team members' accounts don't show up
+
+✅ Solution:
+- Check that `DATABASE_URL` is IDENTICAL to all team members
+- Confirm you're all connecting to the SAME server
+- If using SQLite by mistake, switch to PostgreSQL connection string
+- Restart the backend server after changing `.env`
 
 ---
 
